@@ -1,5 +1,15 @@
 import streamlit as st
 import requests
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from .env file if running locally
+load_dotenv()
+
+PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+
 
 # Function to get sustainable design suggestions from Perplexity API
 def get_sustainable_design_suggestions(product_name, target_audience, custom_prompt=None):
@@ -47,7 +57,7 @@ def get_sustainable_design_suggestions(product_name, target_audience, custom_pro
     headers = {
         "accept": "application/json",
         "content-type": "application/json",
-        "authorization": "Bearer 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"
+        "authorization": PERPLEXITY_API_KEY
     }
 
     response = requests.post(url, json=payload, headers=headers)
@@ -57,7 +67,7 @@ def get_sustainable_design_suggestions(product_name, target_audience, custom_pro
 def get_openai_suggestions(results, custom_prompt=None):
     from openai import OpenAI
 
-    client = OpenAI(api_key="sk-proj-6LOJAQQOLOdAu8kqqYdBT3BlbkFJf4601un6HDH7Qe38VNH1")
+    client = OpenAI(api_key=OPENAI_API_KEY)
 
     default_prompt = f"""Provide a report with  suggestions for sustainable designs based on these results: {' '.join(results)}. 
 
