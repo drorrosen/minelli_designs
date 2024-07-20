@@ -1,13 +1,11 @@
 import streamlit as st
 import requests
-from dotenv import load_dotenv
 import os
 
-# Load environment variables from .env file if running locally
-load_dotenv()
 
-PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+PERPLEXITY_API_KEY = st.secrets["PERPLEXITY_API_KEY"]
+OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 
 
 
