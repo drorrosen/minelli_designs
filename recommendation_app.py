@@ -37,7 +37,7 @@ def get_sustainable_design_suggestions(product_name, target_audience, custom_pro
         prompt = default_prompt
 
     payload = {
-        "model": "llama-3-8b-instruct",
+        "model": "llama-3-70b-instruct",
         "messages": [
             {
                 "role": "system",
