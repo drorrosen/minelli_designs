@@ -57,7 +57,7 @@ def get_sustainable_design_suggestions(product_name, target_audience, custom_pro
 def get_openai_suggestions(results, custom_prompt=None):
     from openai import OpenAI
 
-    client = OpenAI(api_key="sk-proj-IKKDOpzE4z6VxdfZjWnST3BlbkFJ1yKZdC8awK9ni6xga9kl")
+    client = OpenAI(api_key="sk-proj-6LOJAQQOLOdAu8kqqYdBT3BlbkFJf4601un6HDH7Qe38VNH1")
 
     default_prompt = f"""Provide a report with  suggestions for sustainable designs based on these results: {' '.join(results)}. 
 
