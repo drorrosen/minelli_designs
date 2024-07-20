@@ -57,7 +57,7 @@ def get_sustainable_design_suggestions(product_name, target_audience, custom_pro
     headers = {
         "accept": "application/json",
         "content-type": "application/json",
-        "authorization": PERPLEXITY_API_KEY
+        "authorization": f"Bearer {PERPLEXITY_API_KEY}"
     }
 
     response = requests.post(url, json=payload, headers=headers)
