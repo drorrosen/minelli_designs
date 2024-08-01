@@ -1,134 +1,480 @@
 import streamlit as st
 import requests
-import os
 
 
 
-PERPLEXITY_API_KEY = st.secrets["PERPLEXITY_API_KEY"]
-OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
-
-
-
-# Function to get sustainable design suggestions from Perplexity API
-def get_sustainable_design_suggestions(product_name, target_audience, custom_prompt=None):
-    url = "https://api.perplexity.ai/chat/completions"
-    default_prompt = f"""Provide a report with specific product challenges/problems from the perspective
-                 of the consumer or from a sustainability perspective related to the product category {product_name}.
-                 
-                 The challenge can be intended as a technical aspect or a sustainable design aspect.
-                 
-                 The target audience for this product is {target_audience} who are willing to pay more for sustainable products.
-                 
-                 
-                Provide numeric proofs for each suggestion.
-                
-                Please check for quality and known articles and websites only.
-                
-                provide with the full reference and link.
-                """
-
-    #prompt = custom_prompt if custom_prompt else default_prompt
-
-
-    if custom_prompt:
-        prompt = custom_prompt
-        prompt = f"{prompt}\n\n use the following product name and target audience:\n{product_name}\n{target_audience}"
-    else:
-        prompt = default_prompt
-
-    payload = {
-        "model": "llama-3-70b-instruct",
-        "messages": [
-            {
-                "role": "system",
-                "content": "Be precise and concise."
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
-        "temperature": 0,
-        "return_citations": True
-    }
-
-    headers = {
-        "accept": "application/json",
-        "content-type": "application/json",
-        "authorization": f"Bearer {PERPLEXITY_API_KEY}"
-    }
-
-    response = requests.post(url, json=payload, headers=headers)
-    return response.json()['choices'][0]['message']['content']
-
-# Function to get OpenAI suggestions
-def get_openai_suggestions(results, custom_prompt=None):
-    from openai import OpenAI
-
-    client = OpenAI(api_key=OPENAI_API_KEY)
-
-    default_prompt = f"""Provide a report with  suggestions for sustainable designs based on these results: {' '.join(results)}. 
-
-                Please check for quality and known articles and websites only.
-                
-                Here are some designs that I made in the past. these are just general examples for you to better understand-
-                example 1:
-                    A NATURAL AND COMPOSTABLE MAKE UP COMPACT
-                    No microplastics: 0% release of microplastics with this pack during life nor at the end of life
-                    Biobased materials: 100% of materials are not derived from petroleum.
-                    Composting: mBlack biodegrades in 3 months vs. the several hundred years of traditional plastics
-                    Easy separability at end of life: The mirror, which is not glued, separates for recycling in seconds.
-                    Changing market: millennials are willing to pay more for sustainable products
-                example 2:
-                    A CUSTOMIZABLE FRAGRANCE CAP WITH A CIRCULAR STORY TELLING (similar to what I showed during the call)
-                    One bioplastic capsule (platform), multiple outer shell shapes (in wood). Because the tooling costs of wood are one order of magnitude lower than plastic, so it’s easier to customize
-                    the capsule is made with our own bioplastic material that is called mBlack, which contains our own wood waste from our manufacturing activities. So, the marketing team can tell a nice circularity story (e.g. when I make the wood component I generate waste, that I use to make a bioplastic, that I use to make the capsule… there is some circularity in the cap)
-                    bioplastic capsule ensures a nice fit with the parfume pump. At the same time the wood part gives a premium, unique touch to the cap
-                """
-
-    #prompt = custom_prompt if custom_prompt else default_prompt
-
-    if custom_prompt:
-        prompt = custom_prompt
-        prompt = f"{prompt}\n\n use the following Results from Perplexity:\n{' '.join(results)}"
-    else:
-        prompt = default_prompt
-
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        max_tokens=2400,
-        temperature=0.5,
-        messages=[{"role": "user", "content": prompt}],
-        stream=False
+st.set_page_config(
+    page_title="Data Science methods",
+    layout="wide",
+    initial_sidebar_state="expanded",)
+def intro():
+    st.write("# Welcome to Minelli Product Development Tool! 👋")
+    st.sidebar.success("Select a Dashboard above.")
+    st.markdown(
+        """
+        
+        This app is designed to help you find sustainable design suggestions for your product.
+        
+        Dashboards:
+        - [New Ideas/concepts](#new-ideasconcepts)
+        - [what has been done with respect to an existing product 'challenge'](#what-has-been-done-with-respect-to-an-existing-product-challenge)
+        - [Latest Innovations](#latest-innovations)
+        - [competitors for a product and topic](#competitors-for-a-product-and-topic)
+        """
     )
 
-    return response.choices[0].message.content
+def dashboard1():
+    import streamlit as st
+    import requests
 
-# Streamlit app
-st.title("Sustainable Design Suggestions Generator")
+    # Function to get sustainable design suggestions from Perplexity API
+    def get_sustainable_design_suggestions(product_name,perplexity_api_key, custom_prompt=None):
+        url = "https://api.perplexity.ai/chat/completions"
+        default_prompt = f"""Provide a report with specific product challenges/problems related to the product category
+                            {product_name}.
+                            The challenge can be intended, for example, as a technical challenge (manufacturing point of view),
+                            functional-design challenge (user point of view), supply challenge (supply chain point of view), sustainability
+                            challenge (sustainable manager point of view), marketing challenge (marketing manager point of view), or
+                            other. A product challenge is an aspect of the product that, if improved, can create a market opportunity.
+                            At least 10 challenges.
+                            The challenges should not be trivial.
+                            Provide numeric proofs for each suggestion. These figures should prove that the suggestion is indeed a
+                            relevant product problem to tackle.
+                            Please check for quality and known articles and websites only.
+                            Provide with the full reference and working link. Check that the link works.
+                    """
 
-# User input
-product_name = st.sidebar.text_input("Enter product name")
-target_audience = st.sidebar.text_input("Enter target audience")
-iterations = st.number_input("Enter number of iterations", min_value=1, step=1)
-custom_perplexity_prompt = st.sidebar.text_area("Enter custom prompt for Perplexity API (optional)")
-custom_openai_prompt = st.sidebar.text_area("Enter custom prompt for OpenAI API (optional)")
+        #prompt = custom_prompt if custom_prompt else default_prompt
 
-if st.button('Generate Suggestions'):
-    st.write("Fetching suggestions, please wait...")
 
-    # Generate suggestions from Perplexity API
-    results = [get_sustainable_design_suggestions(product_name, target_audience, custom_perplexity_prompt) for _ in range(iterations)]
+        if custom_prompt:
+            prompt = custom_prompt
+            prompt = f"{prompt}\n\n use the following product name:\n{product_name}"
+        else:
+            prompt = default_prompt
 
-    # Display intermediate results
-    st.subheader("Perplexity API Results:")
-    for i, result in enumerate(results, start=1):
-        st.write(f"Result {i}:")
+        payload = {
+            "model": "llama-3-sonar-large-32k-online",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "Be precise and concise."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "temperature": 0,
+            "return_citations": True
+        }
+
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "authorization": f"Bearer {perplexity_api_key}"
+        }
+
+        response = requests.post(url, json=payload, headers=headers)
+        return response.json()['choices'][0]['message']['content']
+
+    # Function to get OpenAI suggestions
+    def get_openai_suggestions(results, openai_api_key, custom_prompt=None):
+        from openai import OpenAI
+
+        client = OpenAI(api_key=openai_api_key)
+
+        default_prompt = f"""Provide a report with suggestions for product designs based on these results: {''.join(results)}.
+                                Check for quality and known articles and websites only.
+                        
+                                The suggestions should tackle a relevant problem and should not be trivial.
+                                The suggestions should be technically advanced and precise.
+                                Here is an example design process “from challenge to product” that we executed in the past. This is just a
+                                general example for you to better understand:
+                        Example: A monomaterial fragrance cap
+                        Challenge: market likes wood fragrance caps (natural material, perceived sustainability, every cap is
+                        different, etc.). However, an inner insert made in plastic is typically necessary to make a good, quality fit
+                        between the cap and the pump. When the user sees the plastic insert, she does not like it. In addition wood
+                        and plastic cannot be separated at the end of life.
+                        Product solution: the fragrance cap is made using wood. The friction fit between cap and the pump is
+                        ensured through three vertical cork pins. Cork is elastic and ensures a good fit. Cork and wood are
+                        monomaterial. Cork and wood are perceived as sustainable natural products.
+                    """
+
+        #prompt = custom_prompt if custom_prompt else default_prompt
+
+        if custom_prompt:
+            prompt = custom_prompt
+            prompt = f"{prompt}\n\n use the following Results from Perplexity:\n{result}"
+        else:
+            prompt = default_prompt
+
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            max_tokens=2400,
+            temperature=0.5,
+            messages=[{"role": "user", "content": prompt}],
+            stream=False
+        )
+
+        return response.choices[0].message.content
+
+    # Streamlit app
+    st.title("Sustainable Design Suggestions Generator")
+
+    # User input
+    openai_api_key = st.sidebar.text_input("Enter your OpenAI API Key", type="password")
+    perplexity_api_key = st.sidebar.text_input("Enter your Perplexity API Key", type="password")
+
+    st.sidebar.divider()
+
+    product_name = st.sidebar.text_input("Enter product name")
+    custom_perplexity_prompt = st.sidebar.text_area("Enter custom prompt for Perplexity API (optional)")
+    custom_openai_prompt = st.sidebar.text_area("Enter custom prompt for OpenAI API (optional)")
+
+    if st.button('Generate Suggestions'):
+        st.write("Fetching suggestions, please wait...")
+
+        # Generate suggestions from Perplexity API
+        result = get_sustainable_design_suggestions(product_name,perplexity_api_key, custom_perplexity_prompt)
+
+        # Display intermediate results
+        st.subheader("Perplexity API Results:")
         st.write(result)
 
-    # Generate final suggestions from OpenAI API
-    final_suggestions = get_openai_suggestions(results, custom_openai_prompt)
+        # Generate final suggestions from OpenAI API
+        final_suggestions = get_openai_suggestions(result,openai_api_key, custom_openai_prompt)
 
-    # Display final suggestions
-    st.subheader("Final Suggestions:")
-    st.write(final_suggestions)
+        # Display final suggestions
+        st.subheader("Final Suggestions:")
+        st.write(final_suggestions)
+
+def dashboard2():
+    import streamlit as st
+    import requests
+
+    # Function to get sustainable design suggestions from Perplexity API
+    def get_sustainable_design_suggestions(product_category, product_challenge, perplexity_api_key, custom_prompt=None):
+        url = "https://api.perplexity.ai/chat/completions"
+        default_prompt = f"""Provide a report with specific information on what has been done with respect to the following product challenge:
+                            Product Category: {product_category}
+                            Product Challenge: {product_challenge}
+                            Please provide specific examples, solutions, and innovations that have addressed this challenge. Include references and working links to relevant articles and websites.
+                            Look for 10 suggestions.Provide references.
+                            """
+
+        if custom_prompt:
+            prompt = custom_prompt
+            prompt = f"{prompt}\n\n use the following product category and challenge:\n{product_category}\n{product_challenge}"
+        else:
+            prompt = default_prompt
+
+        payload = {
+            "model": "llama-3-sonar-large-32k-online",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "Be precise and concise."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "temperature": 0,
+            "return_citations": True
+        }
+
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "authorization": f"Bearer {perplexity_api_key}"
+        }
+
+        response = requests.post(url, json=payload, headers=headers)
+        return response.json()['choices'][0]['message']['content']
+
+    # Function to get OpenAI suggestions
+    def get_openai_suggestions(results, openai_api_key, custom_prompt=None):
+        from openai import OpenAI
+
+        client = OpenAI(api_key=openai_api_key)
+
+        default_prompt = f"""Provide a report with suggestions based on what has been done to address the following product challenge: {result}.
+                                Check for quality and known articles and websites only.
+                        
+                                The suggestions should tackle a relevant problem and should not be trivial.
+                                The suggestions should be technically advanced and precise.
+
+                            """
+
+        if custom_prompt:
+            prompt = custom_prompt
+            prompt = f"{prompt}\n\n use the following Results from Perplexity:\n{result}"
+        else:
+            prompt = default_prompt
+
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            max_tokens=2400,
+            temperature=0.5,
+            messages=[{"role": "user", "content": prompt}],
+            stream=False
+        )
+
+        return response.choices[0].message.content
+
+    # Streamlit app
+    st.title("What has been done with respect to an existing product challenge")
+
+    # User input
+    openai_api_key = st.sidebar.text_input("Enter your OpenAI API Key", type="password")
+    perplexity_api_key = st.sidebar.text_input("Enter your Perplexity API Key", type="password")
+
+    st.sidebar.divider()
+
+    product_category = st.sidebar.text_input("Enter product category")
+    product_challenge = st.sidebar.text_input("Enter product challenge")
+    custom_perplexity_prompt = st.sidebar.text_area("Enter custom prompt for Perplexity API (optional)")
+    custom_openai_prompt = st.sidebar.text_area("Enter custom prompt for OpenAI API (optional)")
+
+    if st.button('Generate Suggestions'):
+        st.write("Fetching suggestions, please wait...")
+
+        # Generate suggestions from Perplexity API
+        result = get_sustainable_design_suggestions(product_category, product_challenge,perplexity_api_key, custom_perplexity_prompt)
+
+        # Display intermediate results
+        st.subheader("Perplexity API Results:")
+        st.write(result)
+
+        # Generate final suggestions from OpenAI API
+        final_suggestions = get_openai_suggestions(result, openai_api_key, custom_openai_prompt)
+
+        # Display final suggestions
+        st.subheader("Final Suggestions:")
+        st.write(final_suggestions)
+
+
+
+def dashboard3():
+    import streamlit as st
+    import requests
+
+    # Function to get sustainable design suggestions from Perplexity API
+    def get_latest_innovations(product_category, topic, perplexity_api_key, custom_prompt=None):
+        url = "https://api.perplexity.ai/chat/completions"
+        default_prompt = f"""Provide a report on the latest innovations and news in the product category {product_category} related to the topic {topic}.
+                            Include recent advancements, trends, and technologies. Provide references and working links to relevant articles and websites.
+                            Look for 10 suggestions.Provide references.
+                            """
+
+        if custom_prompt:
+            prompt = custom_prompt
+            prompt = f"{prompt}\n\n use the following product category and topic:\n{product_category}\n{topic}"
+        else:
+            prompt = default_prompt
+
+        payload = {
+            "model": "llama-3-sonar-large-32k-online",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "Be precise and concise."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "temperature": 0,
+            "return_citations": True
+        }
+
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "authorization": f"Bearer {perplexity_api_key}"
+        }
+
+        response = requests.post(url, json=payload, headers=headers)
+        return response.json()['choices'][0]['message']['content']
+
+    # Function to get OpenAI suggestions
+    def get_openai_suggestions(results, openai_api_key, custom_prompt=None):
+        from openai import OpenAI
+
+        client = OpenAI(api_key=openai_api_key)
+
+        default_prompt = f"""Provide a detailed report based on the latest innovations and news related to the following product category and topic: {result}.
+                                Check for quality and known articles and websites only.
+                        
+                                The suggestions should tackle a relevant problem and should not be trivial.
+                                The suggestions should be technically advanced and precise.
+                            """
+
+        if custom_prompt:
+            prompt = custom_prompt
+            prompt = f"{prompt}\n\n use the following Results from Perplexity:\n{result}"
+        else:
+            prompt = default_prompt
+
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            max_tokens=2400,
+            temperature=0.5,
+            messages=[{"role": "user", "content": prompt}],
+            stream=False
+        )
+
+        return response.choices[0].message.content
+
+    # Streamlit app
+    st.title("Latest Innovations/News in a Product Category vs. a Specific Topic")
+
+    # User input
+    openai_api_key = st.sidebar.text_input("Enter your OpenAI API Key", type="password")
+    perplexity_api_key = st.sidebar.text_input("Enter your Perplexity API Key", type="password")
+
+    st.sidebar.divider()
+
+    product_category = st.sidebar.text_input("Enter product category")
+    topic = st.sidebar.text_input("Enter topic")
+    custom_perplexity_prompt = st.sidebar.text_area("Enter custom prompt for Perplexity API (optional)")
+    custom_openai_prompt = st.sidebar.text_area("Enter custom prompt for OpenAI API (optional)")
+
+    if st.button('Generate Innovations'):
+        st.write("Fetching latest innovations, please wait...")
+
+        # Generate suggestions from Perplexity API
+        result = get_latest_innovations(product_category, topic,perplexity_api_key, custom_perplexity_prompt)
+
+        # Display intermediate results
+        st.subheader("Perplexity API Results:")
+        st.write(result)
+
+        # Generate final suggestions from OpenAI API
+        final_suggestions = get_openai_suggestions(result,openai_api_key, custom_openai_prompt)
+
+        # Display final suggestions
+        st.subheader("Final Suggestions:")
+        st.write(final_suggestions)
+
+
+def dashboard4():
+    import streamlit as st
+    import requests
+
+    # Function to get sustainable design suggestions from Perplexity API
+    def get_competitors(product_category, topic, perplexity_api_key, custom_prompt=None):
+        url = "https://api.perplexity.ai/chat/completions"
+        default_prompt = f"""Provide a report on the competitors in the product category {product_category} related to the topic {topic}.
+                            Include major companies, their products, and any relevant information on their market strategies and innovations.
+                            Provide references and working links to relevant articles and websites.
+                            Look for 10 suggestions. Provide references.
+                            """
+
+        if custom_prompt:
+            prompt = custom_prompt
+            prompt = f"{prompt}\n\n use the following product category and topic:\n{product_category}\n{topic}"
+        else:
+            prompt = default_prompt
+
+        payload = {
+            "model": "llama-3-sonar-large-32k-online",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "Be precise and concise."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "temperature": 0,
+            "return_citations": True
+        }
+
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "authorization": f"Bearer {perplexity_api_key}"
+        }
+
+        response = requests.post(url, json=payload, headers=headers)
+        return response.json()['choices'][0]['message']['content']
+
+    # Function to get OpenAI suggestions
+    def get_openai_suggestions(results, openai_api_key, custom_prompt=None):
+        from openai import OpenAI
+
+        client = OpenAI(api_key=openai_api_key)
+
+        default_prompt = f"""Provide a detailed report based on the competitors in the following product category and topic: {result}.
+                                Check for quality and known articles and websites only.
+                        
+                                The suggestions should tackle a relevant problem and should not be trivial.
+                                The suggestions should be technically advanced and precise.
+                            """
+
+        if custom_prompt:
+            prompt = custom_prompt
+            prompt = f"{prompt}\n\n use the following Results from Perplexity:\n{result}"
+        else:
+            prompt = default_prompt
+
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            max_tokens=2400,
+            temperature=0.5,
+            messages=[{"role": "user", "content": prompt}],
+            stream=False
+        )
+
+        return response.choices[0].message.content
+
+    # Streamlit app
+    st.title("Competitors for a Product and Topic")
+
+    # User input
+    openai_api_key = st.sidebar.text_input("Enter your OpenAI API Key", type="password")
+    perplexity_api_key = st.sidebar.text_input("Enter your Perplexity API Key", type="password")
+
+    st.sidebar.divider()
+
+    product_category = st.sidebar.text_input("Enter product category")
+    topic = st.sidebar.text_input("Enter topic")
+    custom_perplexity_prompt = st.sidebar.text_area("Enter custom prompt for Perplexity API (optional)")
+    custom_openai_prompt = st.sidebar.text_area("Enter custom prompt for OpenAI API (optional)")
+
+    if st.button('Generate Competitors'):
+        st.write("Fetching competitors, please wait...")
+
+        # Generate suggestions from Perplexity API
+        result = get_competitors(product_category, topic, perplexity_api_key, custom_perplexity_prompt)
+
+        # Display intermediate results
+        st.subheader("Perplexity API Results:")
+        st.write(result)
+
+        # Generate final suggestions from OpenAI API
+        final_suggestions = get_openai_suggestions(result,  openai_api_key, custom_openai_prompt)
+
+        # Display final suggestions
+        st.subheader("Final Suggestions:")
+        st.write(final_suggestions)
+
+
+
+
+page_names_to_funcs = {
+    "Introduction": intro,
+    "New Ideas/concepts": dashboard1,
+    "what has been done with respect to an existing product 'challenge": dashboard2,
+    "Latest Innovations": dashboard3,
+    "competitors for a product and topic": dashboard4
+}
+
+dashboard_name = st.sidebar.selectbox("Choose a dashboard", page_names_to_funcs.keys())
+page_names_to_funcs[dashboard_name]()
